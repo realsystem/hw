@@ -1,0 +1,30 @@
+# Foreman Connection
+foreman_url      = "https://foreman.example.com"
+foreman_username = "admin"
+foreman_password = "changeme123"
+foreman_insecure = true  # Set to false if using valid SSL cert
+
+# SSH Configuration
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... your-public-key"
+ssh_private_key_path = "~/.ssh/id_rsa"
+
+# Network Configuration (adjust to match your environment)
+provisioning_network = "10.50.0.0"
+provisioning_netmask = "255.255.0.0"
+provisioning_gateway = "10.50.0.1"
+provisioning_vlan    = 50
+
+management_network  = "10.10.0.0"
+management_netmask  = "255.255.0.0"
+management_gateway  = "10.10.0.1"
+management_vlan     = 10
+
+dhcp_range_start = "10.50.3.100"
+dhcp_range_end   = "10.50.15.254"
+
+dns_primary   = "10.5.0.1"
+dns_secondary = "10.5.0.2"
+
+# Ceph Networks
+ceph_public_network  = "10.20.0.0/16"
+ceph_cluster_network = "10.30.0.0/16"

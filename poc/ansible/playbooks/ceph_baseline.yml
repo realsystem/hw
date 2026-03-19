@@ -1,0 +1,48 @@
+---
+- name: Configure Ceph-ready baseline on all nodes
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Wait for system to be ready
+      wait_for_connection:
+        timeout: 300
+
+    - name: Gather facts
+      setup:
+
+  roles:
+    - role: common
+      tags: [common]
+
+    - role: network
+      tags: [network]
+
+    - role: kernel
+      tags: [kernel]
+
+    - role: storage
+      tags: [storage]
+
+    - role: time
+      tags: [time]
+
+    - role: monitoring
+      tags: [monitoring]
+
+  post_tasks:
+    - name: Mark node as configured
+      set_fact:
+        node_configured: true
+
+    - name: Display configuration summary
+      debug:
+        msg: |
+          Node {{ inventory_hostname }} configured successfully:
+          - Role: {{ 'osd' if inventory_hostname in groups['ceph_osd'] else 'mon' }}
+          - Management IP: {{ ansible_host }}
+          - Ceph Public IP: {{ ceph_public_ip }}
+          {% if 'ceph_osd' in group_names %}
+          - Ceph Cluster IP: {{ ceph_cluster_ip }}
+          {% endif %}

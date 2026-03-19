@@ -1,0 +1,8 @@
+# Foreman Server Configuration
+foreman_hostname = "localhost:3000"  # For mock API testing
+# foreman_hostname = "foreman.example.com"  # For real Foreman
+
+foreman_protocol = "http"  # Use "https" for production
+foreman_username = "admin"
+foreman_password = "changeme123"
+foreman_insecure = "true"  # Set to "false" for production with valid SSL

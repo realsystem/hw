@@ -1,0 +1,204 @@
+services:
+  # PostgreSQL Database for Foreman
+  postgres:
+    image: postgres:15
+    container_name: foreman-postgres
+    hostname: postgres
+    environment:
+      POSTGRES_USER: foreman
+      POSTGRES_PASSWORD: foreman123
+      POSTGRES_DB: foreman
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      foreman-net:
+        ipv4_address: 172.25.0.10
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U foreman"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Foreman Server
+  foreman:
+    build:
+      context: ./foreman
+      dockerfile: Dockerfile
+    container_name: foreman-server
+    hostname: foreman.local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: foreman
+      DB_USER: foreman
+      DB_PASSWORD: foreman123
+      FOREMAN_ADMIN_USER: admin
+      FOREMAN_ADMIN_PASSWORD: changeme123
+      RAILS_ENV: production
+    ports:
+      - "3000:3000"      # Foreman Web UI
+      - "8443:8443"      # Smart Proxy
+    volumes:
+      - foreman-data:/usr/share/foreman
+      - foreman-logs:/var/log/foreman
+    networks:
+      foreman-net:
+        ipv4_address: 172.25.0.20
+      provisioning-net:
+        ipv4_address: 172.30.0.20
+
+  # DHCP Server (dnsmasq)
+  dhcp:
+    image: debian:12
+    container_name: foreman-dhcp
+    hostname: dhcp
+    cap_add:
+      - NET_ADMIN
+    networks:
+      provisioning-net:
+        ipv4_address: 172.30.0.30
+    volumes:
+      - ./config/dnsmasq.conf:/tmp/dnsmasq.conf:ro
+      - tftp-data:/var/lib/tftpboot
+    command: >
+      bash -c "
+      export DEBIAN_FRONTEND=noninteractive &&
+      apt-get update &&
+      apt-get install -y -o Dpkg::Options::='--force-confnew' dnsmasq &&
+      cp /tmp/dnsmasq.conf /etc/dnsmasq.conf &&
+      dnsmasq --no-daemon --log-queries
+      "
+
+  # TFTP Server
+  tftp:
+    image: debian:12
+    container_name: foreman-tftp
+    hostname: tftp
+    networks:
+      provisioning-net:
+        ipv4_address: 172.30.0.31
+    volumes:
+      - tftp-data:/var/lib/tftpboot
+    command: >
+      bash -c "
+      export DEBIAN_FRONTEND=noninteractive &&
+      apt-get update &&
+      apt-get install -y -o Dpkg::Options::='--force-confnew' tftpd-hpa &&
+      mkdir -p /var/lib/tftpboot &&
+      chmod 755 /var/lib/tftpboot &&
+      /usr/sbin/in.tftpd --foreground --secure /var/lib/tftpboot
+      "
+
+  # Simulated Bare-Metal Node 1 (OSD)
+  node-osd-01:
+    build:
+      context: ./nodes
+      dockerfile: Dockerfile.node
+    container_name: sim-osd-01
+    hostname: ceph-osd-r07-u12
+    privileged: true
+    networks:
+      provisioning-net:
+        ipv4_address: 172.30.0.100
+        mac_address: "52:54:00:aa:bb:01"
+    environment:
+      NODE_TYPE: osd
+      NODE_RACK: 7
+      NODE_UNIT: 12
+      MANAGEMENT_IP: 172.25.100.12
+      IPMI_ADDRESS: 172.26.0.12
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+
+  # Simulated Bare-Metal Node 2 (OSD)
+  node-osd-02:
+    build:
+      context: ./nodes
+      dockerfile: Dockerfile.node
+    container_name: sim-osd-02
+    hostname: ceph-osd-r07-u13
+    privileged: true
+    networks:
+      provisioning-net:
+        ipv4_address: 172.30.0.101
+        mac_address: "52:54:00:aa:bb:02"
+    environment:
+      NODE_TYPE: osd
+      NODE_RACK: 7
+      NODE_UNIT: 13
+      MANAGEMENT_IP: 172.25.100.13
+      IPMI_ADDRESS: 172.26.0.13
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+
+  # Simulated Bare-Metal Node 3 (MON)
+  node-mon-01:
+    build:
+      context: ./nodes
+      dockerfile: Dockerfile.node
+    container_name: sim-mon-01
+    hostname: ceph-mon-r03-u05
+    privileged: true
+    networks:
+      provisioning-net:
+        ipv4_address: 172.30.0.110
+        mac_address: "52:54:00:aa:bb:10"
+    environment:
+      NODE_TYPE: mon
+      NODE_RACK: 3
+      NODE_UNIT: 5
+      MANAGEMENT_IP: 172.25.100.5
+      IPMI_ADDRESS: 172.26.0.5
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+
+  # IPMI Simulator (for node power control)
+  ipmi-simulator:
+    image: debian:12
+    container_name: ipmi-sim
+    hostname: ipmi
+    networks:
+      ipmi-net:
+        ipv4_address: 172.26.0.1
+    ports:
+      - "6230:623/udp"   # IPMI port for node-osd-01
+      - "6231:623/udp"   # IPMI port for node-osd-02
+      - "6232:623/udp"   # IPMI port for node-mon-01
+    command: >
+      bash -c "
+      export DEBIAN_FRONTEND=noninteractive &&
+      apt-get update &&
+      apt-get install -y -o Dpkg::Options::='--force-confnew' ipmitool &&
+      tail -f /dev/null
+      "
+
+networks:
+  foreman-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+          gateway: 172.25.0.1
+  
+  provisioning-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+          gateway: 172.30.0.1
+
+  ipmi-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.26.0.0/16
+          gateway: 172.26.0.1
+
+volumes:
+  postgres-data:
+  foreman-data:
+  foreman-logs:
+  tftp-data:

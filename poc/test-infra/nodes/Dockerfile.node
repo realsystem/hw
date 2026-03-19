@@ -1,0 +1,45 @@
+FROM debian:12
+
+# Install required packages for bare-metal simulation
+RUN apt-get update && \
+    apt-get install -y \
+    openssh-server \
+    python3 \
+    python3-pip \
+    sudo \
+    vim \
+    curl \
+    wget \
+    iproute2 \
+    procps \
+    net-tools \
+    ipmitool \
+    pciutils \
+    dmidecode \
+    lshw \
+    hdparm \
+    smartmontools \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create fake disk devices for storage simulation
+RUN mkdir -p /dev/disk && \
+    for i in {b..l}; do \
+        touch /dev/sd$i; \
+    done
+
+# Configure SSH
+RUN mkdir -p /var/run/sshd && \
+    echo 'root:testpass' | chpasswd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# Create hardware facts script
+COPY hardware-facts.sh /usr/local/bin/hardware-facts.sh
+RUN chmod +x /usr/local/bin/hardware-facts.sh
+
+# Expose SSH
+EXPOSE 22
+
+# Start SSH and run indefinitely
+CMD ["/usr/sbin/sshd", "-D"]

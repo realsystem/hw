@@ -1,0 +1,24 @@
+---
+:unattended: true
+:login: true
+:require_ssl: false
+:locations_enabled: true
+:organizations_enabled: true
+
+:provisioning_network: 172.30.0.0/16
+
+:puppetrun: false
+:default_puppet_environment: production
+
+:logging:
+  :level: info
+  :production:
+    :type: file
+    :layout: pattern
+
+:domain: local
+:fqdn: foreman.local
+
+:websockets_encrypt: false
+:websockets_ssl_key: ~
+:websockets_ssl_cert: ~

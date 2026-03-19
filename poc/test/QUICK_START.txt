@@ -1,0 +1,119 @@
+================================================================================
+DOCKER TEST ENVIRONMENT - QUICK START
+================================================================================
+
+WHAT IT DOES:
+  Test Ansible playbooks locally on your laptop using Docker containers
+  instead of real bare-metal servers.
+
+WHAT YOU NEED:
+   Docker Desktop running
+   Optional: sshpass (brew install hudochenkov/sshpass/sshpass)
+
+================================================================================
+QUICK START COMMANDS
+================================================================================
+
+1. START TEST ENVIRONMENT
+   cd test
+   ./setup-test-env.sh
+
+2. TEST ANSIBLE CONNECTIVITY
+   cd ..
+   ansible -i test/inventory-test.yml all -m ping
+
+3. RUN TEST PLAYBOOK
+   ansible-playbook -i test/inventory-test.yml test/test-playbook.yml
+
+4. TEST REAL ROLES
+   ansible-playbook -i test/inventory-test.yml ansible/playbooks/ceph_baseline.yml --tags common
+
+5. CLEANUP
+   cd test
+   docker-compose down
+
+================================================================================
+TEST CONTAINERS
+================================================================================
+
+  test-osd-01    172.20.0.10  (Simulated OSD node)
+  test-osd-02    172.20.0.11  (Simulated OSD node)
+  test-mon-01    172.20.0.20  (Simulated MON node)
+
+  SSH: root / testpass
+
+================================================================================
+USEFUL COMMANDS
+================================================================================
+
+# Test connectivity
+ansible -i test/inventory-test.yml all -m ping
+
+# Run ad-hoc command
+ansible -i test/inventory-test.yml all -a "hostname"
+
+# Test specific role
+ansible-playbook -i test/inventory-test.yml \
+  ansible/playbooks/ceph_baseline.yml --tags common
+
+# SSH to container
+sshpass -p testpass ssh root@172.20.0.10
+
+# Check container logs
+docker logs test-osd-01
+
+# Restart containers
+docker-compose restart
+
+================================================================================
+WHAT WORKS IN DOCKER
+================================================================================
+
+ Package installation (apt)
+ File/template creation
+ Service management (partial)
+ Network sysctl (some)
+ Timezone configuration
+ User/group management
+
+ THP disable (kernel feature)
+ CPU governor (hardware)
+ Disk I/O schedulers (no real disks)
+ IPMI control
+ PXE boot
+
+================================================================================
+TYPICAL WORKFLOW
+================================================================================
+
+1. Edit Ansible playbook/role
+2. Test in Docker: ansible-playbook -i test/inventory-test.yml ...
+3. Fix any errors
+4. Repeat until working
+5. Deploy to real hardware
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Containers not starting?
+   Check Docker Desktop is running
+   Run: docker ps
+
+Ansible can't connect?
+   Test SSH: sshpass -p testpass ssh root@172.20.0.10
+   Run setup again: ./setup-test-env.sh
+
+Role fails in Docker?
+   Check README.md for Docker limitations
+   Some features (THP, I/O schedulers) only work on real hardware
+
+================================================================================
+SEE ALSO
+================================================================================
+
+  test/README.md          - Detailed documentation
+  test/docker-compose.yml - Container configuration
+  test/inventory-test.yml - Ansible inventory
+
+================================================================================

@@ -1,0 +1,25 @@
+all:
+  children:
+    ceph_osd:
+      hosts:
+        test-osd-01:
+          ansible_host: localhost
+          ansible_port: 2201
+          ceph_public_ip: 172.20.0.10
+          ceph_cluster_ip: 172.20.1.10
+        test-osd-02:
+          ansible_host: localhost
+          ansible_port: 2202
+          ceph_public_ip: 172.20.0.11
+          ceph_cluster_ip: 172.20.1.11
+    ceph_mon:
+      hosts:
+        test-mon-01:
+          ansible_host: localhost
+          ansible_port: 2203
+          ceph_public_ip: 172.20.0.20
+  vars:
+    ansible_user: root
+    ansible_password: testpass
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'

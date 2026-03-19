@@ -1,0 +1,24 @@
+all:
+  children:
+    ceph_osd:
+      hosts:
+        node-01:
+          ansible_host: localhost
+          ansible_port: 2301
+          ansible_user: root
+          ansible_password: testpass
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        node-02:
+          ansible_host: localhost
+          ansible_port: 2302
+          ansible_user: root
+          ansible_password: testpass
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+    ceph_mon:
+      hosts:
+        node-03:
+          ansible_host: localhost
+          ansible_port: 2303
+          ansible_user: root
+          ansible_password: testpass
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'

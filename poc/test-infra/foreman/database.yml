@@ -1,0 +1,9 @@
+production:
+  adapter: postgresql
+  host: <%= ENV['DB_HOST'] || 'postgres' %>
+  port: <%= ENV['DB_PORT'] || 5432 %>
+  database: <%= ENV['DB_NAME'] || 'foreman' %>
+  username: <%= ENV['DB_USER'] || 'foreman' %>
+  password: <%= ENV['DB_PASSWORD'] || 'foreman123' %>
+  pool: 25
+  timeout: 5000

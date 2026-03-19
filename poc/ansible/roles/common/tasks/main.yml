@@ -1,0 +1,38 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install common packages
+  apt:
+    name:
+      - vim
+      - htop
+      - iotop
+      - sysstat
+      - net-tools
+      - tcpdump
+      - lsof
+      - strace
+      - curl
+      - wget
+      - jq
+      - python3
+      - python3-pip
+    state: present
+
+- name: Configure timezone
+  timezone:
+    name: UTC
+  ignore_errors: yes  # Docker limitation
+
+- name: Disable unnecessary services
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  loop:
+    - bluetooth
+    - cups
+  ignore_errors: yes

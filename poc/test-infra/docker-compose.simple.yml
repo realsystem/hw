@@ -1,0 +1,101 @@
+# Simplified infrastructure simulation (without full Foreman)
+# Focuses on testable components
+
+services:
+  # DHCP/DNS/TFTP Server (all-in-one with dnsmasq)
+  pxe-server:
+    image: debian:12
+    container_name: pxe-server
+    hostname: pxe.local
+    cap_add:
+      - NET_ADMIN
+    networks:
+      provisioning:
+        ipv4_address: 172.30.0.10
+    volumes:
+      - ./config/dnsmasq.conf:/tmp/dnsmasq.conf:ro
+      - tftp-data:/var/lib/tftpboot
+    command: >
+      bash -c "
+      export DEBIAN_FRONTEND=noninteractive &&
+      apt-get update &&
+      apt-get install -y -o Dpkg::Options::='--force-confnew' dnsmasq &&
+      cp /tmp/dnsmasq.conf /etc/dnsmasq.conf &&
+      mkdir -p /var/lib/tftpboot &&
+      chmod 755 /var/lib/tftpboot &&
+      dnsmasq --no-daemon --log-queries
+      "
+
+  # Simulated Node 1 (OSD)
+  node-01:
+    build:
+      context: ./nodes
+      dockerfile: Dockerfile.node
+    container_name: node-01
+    hostname: ceph-osd-r07-u12
+    privileged: true
+    ports:
+      - "2301:22"
+    networks:
+      provisioning:
+        ipv4_address: 172.30.0.100
+        mac_address: "52:54:00:aa:bb:01"
+    environment:
+      NODE_TYPE: osd
+      NODE_RACK: "7"
+      NODE_UNIT: "12"
+      MANAGEMENT_IP: 10.10.7.12
+      IPMI_ADDRESS: 10.20.7.12
+
+  # Simulated Node 2 (OSD)
+  node-02:
+    build:
+      context: ./nodes
+      dockerfile: Dockerfile.node
+    container_name: node-02
+    hostname: ceph-osd-r07-u13
+    privileged: true
+    ports:
+      - "2302:22"
+    networks:
+      provisioning:
+        ipv4_address: 172.30.0.101
+        mac_address: "52:54:00:aa:bb:02"
+    environment:
+      NODE_TYPE: osd
+      NODE_RACK: "7"
+      NODE_UNIT: "13"
+      MANAGEMENT_IP: 10.10.7.13
+      IPMI_ADDRESS: 10.20.7.13
+
+  # Simulated Node 3 (MON)
+  node-03:
+    build:
+      context: ./nodes
+      dockerfile: Dockerfile.node
+    container_name: node-03
+    hostname: ceph-mon-r03-u05
+    privileged: true
+    ports:
+      - "2303:22"
+    networks:
+      provisioning:
+        ipv4_address: 172.30.0.110
+        mac_address: "52:54:00:aa:bb:10"
+    environment:
+      NODE_TYPE: mon
+      NODE_RACK: "3"
+      NODE_UNIT: "5"
+      MANAGEMENT_IP: 10.10.3.5
+      IPMI_ADDRESS: 10.20.3.5
+
+networks:
+  provisioning:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+          gateway: 172.30.0.1
+
+volumes:
+  tftp-data:

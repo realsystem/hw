@@ -1,0 +1,106 @@
+---
+- name: Configure kernel sysctl parameters
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop:
+    - { name: 'vm.swappiness', value: '10' }
+    - { name: 'vm.dirty_ratio', value: '40' }
+    - { name: 'vm.dirty_background_ratio', value: '5' }
+    - { name: 'vm.vfs_cache_pressure', value: '50' }
+    - { name: 'fs.file-max', value: '2097152' }
+    - { name: 'fs.aio-max-nr', value: '1048576' }
+    - { name: 'kernel.pid_max', value: '4194303' }
+  ignore_errors: yes  # Docker limitation
+
+- name: Disable Transparent Huge Pages
+  lineinfile:
+    path: /etc/rc.local
+    line: "{{ item }}"
+    create: yes
+    mode: '0755'
+  loop:
+    - '#!/bin/bash'
+    - 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
+    - 'echo never > /sys/kernel/mm/transparent_hugepage/defrag'
+
+- name: Create systemd service to disable THP at boot
+  copy:
+    content: |
+      [Unit]
+      Description=Disable Transparent Huge Pages
+      DefaultDependencies=no
+      After=sysinit.target local-fs.target
+      Before=basic.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'echo never > /sys/kernel/mm/transparent_hugepage/enabled'
+      ExecStart=/bin/sh -c 'echo never > /sys/kernel/mm/transparent_hugepage/defrag'
+
+      [Install]
+      WantedBy=basic.target
+    dest: /etc/systemd/system/disable-thp.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable THP disable service
+  systemd:
+    name: disable-thp
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  ignore_errors: yes  # Docker limitation - no systemd
+
+- name: Set CPU governor to performance
+  copy:
+    content: |
+      #!/bin/bash
+      for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+          echo performance > "$cpu"
+      done
+    dest: /usr/local/bin/set-cpu-governor.sh
+    mode: '0755'
+
+- name: Create systemd service for CPU governor
+  copy:
+    content: |
+      [Unit]
+      Description=Set CPU Governor to Performance
+      After=multi-user.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/set-cpu-governor.sh
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/cpu-governor.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable CPU governor service
+  systemd:
+    name: cpu-governor
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  ignore_errors: yes  # Docker limitation - no systemd
+
+- name: Ensure persistent sysctl configuration
+  copy:
+    content: |
+      # Kernel Tuning for Ceph
+      vm.swappiness = 10
+      vm.dirty_ratio = 40
+      vm.dirty_background_ratio = 5
+      vm.vfs_cache_pressure = 50
+      fs.file-max = 2097152
+      fs.aio-max-nr = 1048576
+      kernel.pid_max = 4194303
+    dest: /etc/sysctl.d/60-ceph-kernel.conf
+    mode: '0644'

@@ -1,0 +1,45 @@
+---
+- name: Install chrony for time synchronization
+  apt:
+    name: chrony
+    state: present
+
+- name: Configure chrony
+  copy:
+    content: |
+      # Use public NTP servers
+      pool 0.debian.pool.ntp.org iburst
+      pool 1.debian.pool.ntp.org iburst
+      pool 2.debian.pool.ntp.org iburst
+      pool 3.debian.pool.ntp.org iburst
+
+      # Allow large time corrections
+      makestep 1.0 3
+
+      # Record the rate at which the system clock gains/loses time
+      driftfile /var/lib/chrony/drift
+
+      # Enable kernel synchronization of the real-time clock (RTC)
+      rtcsync
+
+      # Specify directory for log files
+      logdir /var/log/chrony
+    dest: /etc/chrony/chrony.conf
+    mode: '0644'
+  notify: restart chrony
+
+- name: Ensure chrony is enabled and running
+  systemd:
+    name: chrony
+    enabled: yes
+    state: started
+  ignore_errors: yes  # Docker limitation - no systemd
+
+- name: Wait for time synchronization
+  shell: chronyc tracking | grep "Leap status" | grep "Normal"
+  register: time_sync
+  until: time_sync.rc == 0
+  retries: 10
+  delay: 5
+  changed_when: false
+  failed_when: false

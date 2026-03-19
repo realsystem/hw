@@ -1,0 +1,154 @@
+# Server Inventory
+# Define your bare-metal servers here
+
+servers:
+  # OSD Nodes (Storage)
+  - hostname: ceph-osd-r07-u12
+    role: osd
+    rack: 7
+    unit: 12
+    ipmi:
+      address: 10.20.7.12
+      username: ADMIN
+      password: ADMIN
+    network:
+      provisioning_mac: "00:25:90:e3:6c:4a"
+      management_ip: 10.10.7.12
+      provisioning_ip: 10.50.7.12
+      ceph_public_ip: 10.20.7.12
+      ceph_cluster_ip: 10.30.7.12
+    hardware:
+      cpu_cores: 20
+      ram_gb: 256
+      disks: 12
+
+  - hostname: ceph-osd-r07-u13
+    role: osd
+    rack: 7
+    unit: 13
+    ipmi:
+      address: 10.20.7.13
+      username: ADMIN
+      password: ADMIN
+    network:
+      provisioning_mac: "00:25:90:e3:6c:4b"
+      management_ip: 10.10.7.13
+      provisioning_ip: 10.50.7.13
+      ceph_public_ip: 10.20.7.13
+      ceph_cluster_ip: 10.30.7.13
+    hardware:
+      cpu_cores: 20
+      ram_gb: 256
+      disks: 12
+
+  - hostname: ceph-osd-r07-u14
+    role: osd
+    rack: 7
+    unit: 14
+    ipmi:
+      address: 10.20.7.14
+      username: ADMIN
+      password: ADMIN
+    network:
+      provisioning_mac: "00:25:90:e3:6c:4c"
+      management_ip: 10.10.7.14
+      provisioning_ip: 10.50.7.14
+      ceph_public_ip: 10.20.7.14
+      ceph_cluster_ip: 10.30.7.14
+    hardware:
+      cpu_cores: 20
+      ram_gb: 256
+      disks: 12
+
+  # MON Nodes (Monitors)
+  - hostname: ceph-mon-r03-u05
+    role: mon
+    rack: 3
+    unit: 5
+    ipmi:
+      address: 10.20.3.5
+      username: ADMIN
+      password: ADMIN
+    network:
+      provisioning_mac: "00:25:90:e3:3a:05"
+      management_ip: 10.10.3.5
+      provisioning_ip: 10.50.3.5
+      ceph_public_ip: 10.20.3.5
+      ceph_cluster_ip: 10.30.3.5
+    hardware:
+      cpu_cores: 16
+      ram_gb: 128
+      disks: 2
+
+  - hostname: ceph-mon-r03-u06
+    role: mon
+    rack: 3
+    unit: 6
+    ipmi:
+      address: 10.20.3.6
+      username: ADMIN
+      password: ADMIN
+    network:
+      provisioning_mac: "00:25:90:e3:3a:06"
+      management_ip: 10.10.3.6
+      provisioning_ip: 10.50.3.6
+      ceph_public_ip: 10.20.3.6
+      ceph_cluster_ip: 10.30.3.6
+    hardware:
+      cpu_cores: 16
+      ram_gb: 128
+      disks: 2
+
+  - hostname: ceph-mon-r03-u07
+    role: mon
+    rack: 3
+    unit: 7
+    ipmi:
+      address: 10.20.3.7
+      username: ADMIN
+      password: ADMIN
+    network:
+      provisioning_mac: "00:25:90:e3:3a:07"
+      management_ip: 10.10.3.7
+      provisioning_ip: 10.50.3.7
+      ceph_public_ip: 10.20.3.7
+      ceph_cluster_ip: 10.30.3.7
+    hardware:
+      cpu_cores: 16
+      ram_gb: 128
+      disks: 2
+
+# Network Configuration
+networks:
+  management:
+    vlan: 10
+    subnet: 10.10.0.0/16
+    gateway: 10.10.0.1
+    dns:
+      - 10.5.0.1
+      - 10.5.0.2
+
+  provisioning:
+    vlan: 50
+    subnet: 10.50.0.0/16
+    gateway: 10.50.0.1
+    dhcp_range_start: 10.50.3.100
+    dhcp_range_end: 10.50.15.254
+
+  ceph_public:
+    vlan: 20
+    subnet: 10.20.0.0/16
+    gateway: 10.20.0.1
+
+  ceph_cluster:
+    vlan: 30
+    subnet: 10.30.0.0/16
+    gateway: 10.30.0.1
+
+# Foreman Configuration
+foreman:
+  url: https://foreman.example.com
+  username: admin
+  password: changeme123
+  organization: Default Organization
+  location: Default Location

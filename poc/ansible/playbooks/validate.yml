@@ -1,0 +1,100 @@
+---
+- name: Validate Ceph-ready configuration
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Check THP is disabled
+      shell: cat /sys/kernel/mm/transparent_hugepage/enabled
+      register: thp_status
+      changed_when: false
+
+    - name: Validate THP disabled
+      assert:
+        that:
+          - "'[never]' in thp_status.stdout"
+        fail_msg: "THP is not disabled"
+        success_msg: "✓ THP is disabled"
+
+    - name: Check vm.swappiness
+      shell: sysctl vm.swappiness | awk '{print $3}'
+      register: swappiness
+      changed_when: false
+
+    - name: Validate swappiness
+      assert:
+        that:
+          - swappiness.stdout == "10"
+        fail_msg: "vm.swappiness is {{ swappiness.stdout }}, expected 10"
+        success_msg: "✓ vm.swappiness = 10"
+
+    - name: Check network sysctl
+      shell: sysctl net.core.rmem_max | awk '{print $3}'
+      register: rmem_max
+      changed_when: false
+
+    - name: Validate network tuning
+      assert:
+        that:
+          - rmem_max.stdout == "134217728"
+        fail_msg: "net.core.rmem_max not configured correctly"
+        success_msg: "✓ Network tuning applied"
+
+    - name: Check chrony status
+      shell: chronyc tracking | grep "Leap status" | awk '{print $4}'
+      register: chrony_status
+      changed_when: false
+      failed_when: false
+
+    - name: Validate time sync
+      assert:
+        that:
+          - "'Normal' in chrony_status.stdout"
+        fail_msg: "Time synchronization not working"
+        success_msg: "✓ Time synchronized"
+
+    - name: Check node exporter
+      uri:
+        url: "http://localhost:9100/metrics"
+      register: node_exporter
+      failed_when: false
+
+    - name: Validate monitoring
+      assert:
+        that:
+          - node_exporter.status == 200
+        fail_msg: "Node exporter not running"
+        success_msg: "✓ Node exporter running"
+
+    - name: Check data disks (OSD nodes only)
+      shell: "lsblk -dno NAME | grep -v '^sda$' | wc -l"
+      register: disk_count
+      when: "'ceph_osd' in group_names"
+      changed_when: false
+
+    - name: Validate data disks
+      assert:
+        that:
+          - disk_count.stdout | int >= 10
+        fail_msg: "Insufficient data disks: {{ disk_count.stdout }}"
+        success_msg: "✓ {{ disk_count.stdout }} data disks available"
+      when: "'ceph_osd' in group_names"
+
+    - name: Generate validation summary
+      debug:
+        msg: |
+          =====================================
+          Validation Summary for {{ inventory_hostname }}
+          =====================================
+          ✓ Transparent Huge Pages: Disabled
+          ✓ Kernel Tuning: Applied
+          ✓ Network Tuning: Applied
+          ✓ Time Synchronization: Working
+          ✓ Monitoring: Running
+          {% if 'ceph_osd' in group_names %}
+          ✓ Data Disks: {{ disk_count.stdout }} available
+          {% endif %}
+          
+          Node is READY for Ceph deployment
+          =====================================

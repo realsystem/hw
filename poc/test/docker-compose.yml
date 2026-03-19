@@ -1,0 +1,37 @@
+services:
+  ceph-osd-01:
+    build: .
+    container_name: test-osd-01
+    hostname: ceph-osd-r07-u12
+    ports:
+      - "2201:22"
+    networks:
+      test_net:
+        ipv4_address: 172.20.0.10
+
+  ceph-osd-02:
+    build: .
+    container_name: test-osd-02
+    hostname: ceph-osd-r07-u13
+    ports:
+      - "2202:22"
+    networks:
+      test_net:
+        ipv4_address: 172.20.0.11
+
+  ceph-mon-01:
+    build: .
+    container_name: test-mon-01
+    hostname: ceph-mon-r03-u05
+    ports:
+      - "2203:22"
+    networks:
+      test_net:
+        ipv4_address: 172.20.0.20
+
+networks:
+  test_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

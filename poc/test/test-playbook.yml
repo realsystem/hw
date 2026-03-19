@@ -1,0 +1,78 @@
+---
+- name: Test Ansible configuration in Docker
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Display host info
+      debug:
+        msg: "Testing {{ inventory_hostname }} at {{ ansible_host }}"
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install common packages
+      apt:
+        name:
+          - vim
+          - htop
+          - curl
+          - wget
+          - jq
+          - python3
+          - python3-pip
+          - net-tools
+        state: present
+
+    - name: Configure timezone
+      timezone:
+        name: UTC
+
+    - name: Install chrony (time sync)
+      apt:
+        name: chrony
+        state: present
+
+    - name: Test sysctl configuration (Docker-safe parameters)
+      sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        sysctl_set: yes
+        reload: yes
+      loop:
+        - { name: 'vm.swappiness', value: '10' }
+        - { name: 'vm.dirty_ratio', value: '40' }
+        - { name: 'fs.file-max', value: '2097152' }
+      ignore_errors: yes
+
+    - name: Validate configuration
+      block:
+        - name: Check packages installed
+          command: dpkg -l vim htop curl
+          register: pkg_check
+          changed_when: false
+
+        - name: Check Python3
+          command: python3 --version
+          register: python_check
+          changed_when: false
+
+        - name: Check timezone
+          command: timedatectl show --property=Timezone --value
+          register: tz_check
+          changed_when: false
+          ignore_errors: yes
+
+        - name: Display results
+          debug:
+            msg: |
+              Validation Results:
+              - Packages installed: {{ 'OK' if pkg_check.rc == 0 else 'FAILED' }}
+              - Python3 version: {{ python_check.stdout }}
+              - Timezone: {{ tz_check.stdout if tz_check.rc == 0 else 'N/A (Docker)' }}
+              
+              Node {{ inventory_hostname }} is configured!

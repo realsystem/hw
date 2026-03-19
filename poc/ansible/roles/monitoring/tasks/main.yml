@@ -1,0 +1,29 @@
+---
+- name: Install prometheus node exporter
+  apt:
+    name: prometheus-node-exporter
+    state: present
+
+- name: Ensure node exporter is enabled and running
+  systemd:
+    name: prometheus-node-exporter
+    enabled: yes
+    state: started
+  ignore_errors: yes  # Docker limitation - no systemd
+
+- name: Verify node exporter is responding
+  uri:
+    url: "http://localhost:9100/metrics"
+    return_content: yes
+  register: metrics
+  until: metrics.status == 200
+  retries: 3
+  delay: 5
+  failed_when: false
+
+- name: Display monitoring status
+  debug:
+    msg: |
+      Monitoring configuration:
+      - Node exporter: {{ 'Running' if metrics.status == 200 else 'Failed' }}
+      - Metrics endpoint: http://{{ ansible_host }}:9100/metrics

@@ -1,0 +1,37 @@
+---
+- name: Get list of block devices (excluding OS disk)
+  shell: "lsblk -dno NAME | grep -v '^sda$' || true"
+  register: data_disks
+  changed_when: false
+
+- name: Set I/O scheduler
+  shell: |
+    for disk in {{ data_disks.stdout_lines | join(' ') }}; do
+      if [ -e /sys/block/$disk/queue/scheduler ]; then
+        if [[ $disk == nvme* ]]; then
+          echo "none" > /sys/block/$disk/queue/scheduler
+        else
+          echo "mq-deadline" > /sys/block/$disk/queue/scheduler
+        fi
+      fi
+    done
+  when: data_disks.stdout_lines | length > 0
+  changed_when: false
+  ignore_errors: yes
+
+- name: Create udev rule for persistent I/O scheduler
+  copy:
+    content: |
+      # Set I/O scheduler for data disks
+      ACTION=="add|change", KERNEL=="sd[b-z]", ATTR{queue/scheduler}="mq-deadline"
+      ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
+    dest: /etc/udev/rules.d/60-io-scheduler.conf
+    mode: '0644'
+  notify: reload udev
+
+- name: Display disk configuration
+  debug:
+    msg: |
+      Disk configuration for {{ inventory_hostname }}:
+      - OS Disk: /dev/sda
+      - Data Disks: {{ data_disks.stdout_lines | join(', ') if data_disks.stdout_lines | length > 0 else 'None (Docker limitation)' }}
